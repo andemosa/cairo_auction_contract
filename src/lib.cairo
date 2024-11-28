@@ -2,52 +2,51 @@ use starknet::{ContractAddress, get_caller_address, get_block_timestamp};
 
 #[starknet::interface]
 pub trait IAuction<TContractState> {
-    fn place_bid(ref self: TContractState, bid_amount: u256);
+    fn place_bid(ref self: TContractState, bid_amount: u64);
     fn end_auction(ref self: TContractState);
     fn get_highest_bidder(self: @TContractState) -> ContractAddress;
-    fn get_highest_bid(self: @TContractState) -> u256;
+    fn get_highest_bid(self: @TContractState) -> u64;
     fn get_auction_end(self: @TContractState) -> u64;
 }
 
 #[starknet::contract]
-mod Auction {
+pub mod Auction {
     use super::{ContractAddress, get_caller_address, get_block_timestamp};
     use core::starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess};
 
     #[storage]
     struct Storage {
         nft_contract: ContractAddress,
-        initial_price: u256,
+        initial_price: u64,
         end_time: u64,
         highest_bidder: ContractAddress,
-        highest_bid: u256,
+        highest_bid: u64,
         owner: ContractAddress,
     }
 
     #[event]
     #[derive(Drop, starknet::Event)]
-    enum Event {
+    pub enum Event {
         BidPlaced: BidPlaced,
         AuctionEnded: AuctionEnded,
     }
 
     #[derive(Drop, starknet::Event)]
-    struct BidPlaced {
-        bidder: ContractAddress,
-        amount: u256,
+    pub struct BidPlaced {
+        pub bidder: ContractAddress,
+        pub amount: u64,
     }
 
     #[derive(Drop, starknet::Event)]
-    struct AuctionEnded {
-        winner: ContractAddress,
-        amount: u256,
+    pub struct AuctionEnded {
+        pub winner: ContractAddress,
+        pub amount: u64,
     }
 
     #[constructor]
     fn constructor(
-        ref self: ContractState, nft_contract: ContractAddress, initial_price: u256, duration: u64
+        ref self: ContractState, owner: ContractAddress, initial_price: u64, duration: u64, nft_contract: ContractAddress
     ) {
-        let owner = get_caller_address();
         let now = get_block_timestamp();
 
         self.end_time.write(now + duration);
@@ -59,7 +58,7 @@ mod Auction {
 
     #[abi(embed_v0)]
     impl AuctionImpl of super::IAuction<ContractState> {
-        fn place_bid(ref self: ContractState, bid_amount: u256) {
+        fn place_bid(ref self: ContractState, bid_amount: u64) {
             assert(get_block_timestamp() < self.end_time.read(), 'Ended');
             assert(bid_amount > self.highest_bid.read(), 'bid_amount < highest');
 
@@ -84,7 +83,7 @@ mod Auction {
             self.highest_bidder.read()
         }
 
-        fn get_highest_bid(self: @ContractState) -> u256 {
+        fn get_highest_bid(self: @ContractState) -> u64 {
             self.highest_bid.read()
         }
 
